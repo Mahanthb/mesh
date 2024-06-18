@@ -3,7 +3,6 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Stats, OrbitControls } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
-import { useDropzone } from 'react-dropzone';
 import * as dat from 'dat.gui';
 import { Raycaster, Vector2 } from 'three';
 import './App.css';
@@ -53,16 +52,14 @@ export default function App() {
     };
   }, [lightProperties]);
 
-  const onDrop = useCallback((acceptedFiles) => {
-    const file = acceptedFiles[0];
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
     const loader = new GLTFLoader();
     loader.load(URL.createObjectURL(file), (gltf) => {
       setModel(gltf.scene);
       printMeshHierarchy(gltf.scene);
     });
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  };
 
   const printMeshHierarchy = (object, depth = 0) => {
     console.log(`${' '.repeat(depth * 2)}${object.type}: ${object.name || 'Unnamed'}`);
@@ -93,10 +90,7 @@ export default function App() {
 
   return (
     <>
-      <div {...getRootProps()} className="dropzone">
-        <input {...getInputProps()} />
-        {isDragActive ? <p>Drop the files here ...</p> : <p>Drag 'n' drop some files here, or click to select files</p>}
-      </div>
+      <input type="file" onChange={handleFileUpload} />
       <button onClick={handleExport}>Export</button>
       <Canvas camera={{ position: [-8, 5, 8] }}>
         <Scene model={model} lightProperties={lightProperties} />
@@ -244,7 +238,6 @@ function Scene({ model, lightProperties }) {
           position={[lightProperties.position.x, lightProperties.position.y, lightProperties.position.z]}
         />
       )}
-      {model && <primitive object={model} />}
     </>
   );
 }
