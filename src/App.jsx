@@ -5,7 +5,22 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import * as dat from 'dat.gui';
 import { Raycaster, Vector2, AnimationMixer } from 'three';
+import { initializeApp } from 'firebase/app';
+import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
 import './App.css';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCfWYRWOQyNrn9WGv3Wfz_EM47ZpbL_Yqs",
+  authDomain: "virtual-world-84ce0.firebaseapp.com",
+  projectId: "virtual-world-84ce0",
+  storageBucket: "virtual-world-84ce0.appspot.com",
+  messagingSenderId: "306111432374",
+  appId: "1:306111432374:web",
+  measurementId: "G-1K1M3CNJR7"
+};
+
+const app = initializeApp(firebaseConfig);
+const storage = getStorage(app);
 
 export default function App() {
   const [model, setModel] = useState(null);
@@ -13,7 +28,7 @@ export default function App() {
   const [lightProperties, setLightProperties] = useState({
     type: 'ambientLight',
     color: '#ffffff',
-    intensity: 1,
+    intensity: 3,
     position: { x: 10, y: 10, z: 10 },
   });
   const [sceneProperties, setSceneProperties] = useState({
@@ -24,6 +39,9 @@ export default function App() {
     gridSize: 50,
     gridDivisions: 50,
   });
+  const [firebaseFiles, setFirebaseFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState('');
+  const [loading, setLoading] = useState(false);
   const guiRef = useRef(null);
 
   useEffect(() => {
@@ -104,6 +122,34 @@ export default function App() {
     });
   };
 
+  const handleFirebaseFileUpload = async (url) => {
+    setLoading(true);
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => {
+        setModel(gltf.scene);
+        setAnimations(gltf.animations);
+        setLoading(false);
+      },
+      undefined,
+      (error) => {
+        console.error('An error happened while loading the model:', error);
+        setLoading(false);
+      }
+    );
+  };
+
+  const loadFirebaseFiles = async () => {
+    const listRef = ref(storage, '/');
+    const res = await listAll(listRef);
+    const files = await Promise.all(res.items.map(async (itemRef) => {
+      const url = await getDownloadURL(itemRef);
+      return { name: itemRef.name, url };
+    }));
+    setFirebaseFiles(files);
+  };
+
   const handleExport = () => {
     const exporter = new GLTFExporter();
     if (model) {
@@ -124,10 +170,29 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    loadFirebaseFiles();
+  }, []);
+
+  const handleSelectChange = (event) => {
+    const selectedFile = firebaseFiles.find(file => file.name === event.target.value);
+    setSelectedFile(selectedFile.url);
+    handleFirebaseFileUpload(selectedFile.url);
+  };
+
   return (
     <>
-      <input type="file" onChange={handleFileUpload} />
+     <input type="file" onChange={handleFileUpload} />
+      <h2>OR</h2>
+      <label>Choose a model:</label>
+      <select onChange={handleSelectChange} value={selectedFile ? selectedFile.name : ''}>
+        <option value="">Select a file from Firebase</option>
+        {firebaseFiles.map((file, index) => (
+          <option key={index} value={file.name}>{file.name}</option>
+        ))}
+      </select>
       <button onClick={handleExport}>Export</button>
+      {loading && <div>Loading model...</div>}
       <Canvas camera={{ position: [-8, 5, 8] }} style={{ background: sceneProperties.backgroundColor }}>
         <Scene model={model} animations={animations} lightProperties={lightProperties} sceneProperties={sceneProperties} />
         <OrbitControls autoRotate={sceneProperties.autoRotate} />
