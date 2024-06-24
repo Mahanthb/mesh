@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["*"],
+    "origin": ["http://localhost:5173", "https://virtual-world-beta.vercel.app","https://mesh-rosy.vercel.app/"],
     "responseHeader": ["Content-Type"],
     "method": ["GET", "HEAD", "DELETE"],
     "maxAgeSeconds": 3600
